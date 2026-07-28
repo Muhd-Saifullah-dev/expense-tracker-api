@@ -1,0 +1,103 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         Int     @id @default(autoincrement())
+  email      String  @unique
+  password   String?
+  avatar     String?
+  city       String? @db.VarChar(40)
+  region     String? @db.VarChar(40)
+  postalCode String? @db.VarChar(40)
+
+  expenses      Expense[]
+  incomes       Income[]
+  budgets       Budget[]
+  notifications Notification[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model Expense {
+  id     String  @id @default(uuid())
+  title  String  @db.VarChar(255)
+  amount Decimal @db.Decimal(10, 2)
+  note   String? @db.VarChar(100)
+
+  category   Category @relation(fields: [categoryId], references: [id])
+  categoryId Int
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Category {
+  id    Int     @id @default(autoincrement())
+  name  String  @db.VarChar(50)
+  icon  String?
+  color String?
+
+  expenses  Expense[]
+  budgets   Budget[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Income {
+  id Int @id @default(autoincrement())
+
+  title  String
+  amount Decimal @db.Decimal(10, 2)
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id])
+
+  date DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Budget {
+  id Int @id @default(autoincrement())
+
+  amount Decimal @db.Decimal(10, 2)
+  month  Int
+  year   Int
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id])
+
+  categoryId Int
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+   @@unique([userId, categoryId, month, year])
+}
+
+model Notification {
+  id Int @id @default(autoincrement())
+
+  title   String
+  message String
+  isRead  Boolean @default(false)
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+}
