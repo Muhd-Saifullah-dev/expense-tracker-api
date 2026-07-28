@@ -15,6 +15,7 @@ datasource db {
 
 model User {
   id         Int     @id @default(autoincrement())
+  name       String
   email      String  @unique
   password   String?
   avatar     String?
@@ -86,7 +87,8 @@ model Budget {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-   @@unique([userId, categoryId, month, year])
+
+  @@unique([userId, categoryId, month, year])
 }
 
 model Notification {
