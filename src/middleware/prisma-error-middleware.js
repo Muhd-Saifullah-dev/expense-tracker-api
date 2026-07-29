@@ -1,8 +1,9 @@
-const { prisma } = require("@shared/index");
+const { Prisma } = require("@prisma/client");
+
 
 const prismaErrorHandler = (error, req, res, next) => {
 
-  if (error instanceof prisma.PrismaClientKnownRequestError) {
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
 
     switch (error.code) {
 
@@ -73,7 +74,7 @@ const prismaErrorHandler = (error, req, res, next) => {
   }
 
 
-  if (error instanceof prisma.PrismaClientValidationError) {
+  if (error instanceof Prisma.PrismaClientValidationError) {
     return res.status(400).json({
       success: false,
       message: "Invalid Prisma query data",
