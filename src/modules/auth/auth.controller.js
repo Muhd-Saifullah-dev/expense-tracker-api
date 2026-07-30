@@ -7,6 +7,10 @@ const {
   redis,
   generate_otp,
   redis_keys,
+  send_mail,
+  otpTemplate,
+  generate_access_token,
+  generate_refresh_token
 } = require("@shared/index");
 const crypto = require("crypto");
 
@@ -151,13 +155,17 @@ const forget_password = async (req, res, next) => {
       "EX",
       300, // 5 minutes
     );
-
+    await send_mail({
+      toEmail: email,
+      subject: "Password Reset OTP",
+      html: otpTemplate(user.name, otp),
+    });
     // email service se send karna
     console.log("OTP:", otp);
 
     return res
       .status(200)
-      .json(responses.ok_response(null, "otp send to your email"));
+      .json(responses.ok_response(otp, "otp send to your email"));
   } catch (error) {
     next(error);
   }
