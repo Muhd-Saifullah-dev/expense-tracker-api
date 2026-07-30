@@ -1,5 +1,5 @@
 const bcrypt = require("bcrypt");
-
+const crypto = require("crypto");
 const hash_password = async (password) => {
   const salt = 10;
 
@@ -16,21 +16,17 @@ const create_user_session = (req, user) => {
   };
 };
 
-
-
 const generate_access_token = async (user) => {
   return jwt.sign(
     {
       id: user.id,
-     
     },
     process.env.ACCESS_TOKEN_SECRET,
     {
       expiresIn: "15m",
-    }
+    },
   );
 };
-
 
 const generate_refresh_token = async (user) => {
   return jwt.sign(
@@ -40,8 +36,18 @@ const generate_refresh_token = async (user) => {
     process.env.REFRESH_TOKEN_SECRET,
     {
       expiresIn: "7d",
-    }
+    },
   );
+};
+
+const generate_otp = (length = 6) => {
+  let otp = "";
+
+  for (let i = 0; i < length; i++) {
+    otp += crypto.randomInt(0, 10);
+  }
+
+  return otp;
 };
 
 module.exports = {
@@ -49,5 +55,6 @@ module.exports = {
   compare_password,
   create_user_session,
   generate_access_token,
-  generate_refresh_token
+  generate_refresh_token,
+  generate_otp
 };

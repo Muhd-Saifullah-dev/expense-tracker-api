@@ -4,7 +4,11 @@ const {
   compare_password,
   create_user_session,
   responses,
+  redis,
+  generate_otp,
+  redis_keys,
 } = require("@shared/index");
+const crypto = require("crypto");
 
 const login = async (req, res, next) => {
   try {
@@ -32,7 +36,12 @@ const login = async (req, res, next) => {
 
     const refreshToken = await generate_refresh_token(user);
 
-    await redis.set(`refresh:${user.id}`, refreshToken, "EX", 60 * 60 * 24 * 7);
+    await redis.set(
+      redis_keys.refresh_token(user.id),
+      refreshToken,
+      "EX",
+      60 * 60 * 24 * 7,
+    );
 
     return res.status(200).json(
       responses.ok_response(
@@ -85,7 +94,12 @@ const register_user = async (req, res, next) => {
     const accessToken = await generate_access_token(user);
     const refreshToken = await generate_refresh_token(user);
 
-    await redis.set(`refresh:${user.id}`, refreshToken, "EX", 60 * 60 * 24 * 7);
+    await redis.set(
+      redis_keys.refresh_token(user.id),
+      refreshToken,
+      "EX",
+      60 * 60 * 24 * 7,
+    );
 
     return res.status(201).json(
       responses.create_success_response({
@@ -103,7 +117,7 @@ const logout = async (req, res, next) => {
   try {
     const userId = req.user.id;
 
-    await redis.del(`refresh:${userId}`);
+    await redis.del(redis_keys.refresh_token(userId));
 
     return res
       .status(200)
@@ -113,8 +127,120 @@ const logout = async (req, res, next) => {
   }
 };
 
+const forget_password = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+
+    const user = await prisma.user.findUnique({
+      where: {
+        email,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
+    const otp = generate_otp(6);
+
+    await redis.set(
+      redis_keys.forgot_password(email),
+      otp,
+      "EX",
+      300, // 5 minutes
+    );
+
+    // email service se send karna
+    console.log("OTP:", otp);
+
+    return res
+      .status(200)
+      .json(responses.ok_response(null, "otp send to your email"));
+  } catch (error) {
+    next(error);
+  }
+};
+
+const verify_otp = async (req, res, next) => {
+  try {
+    const { email, otp } = req.body;
+
+    const storedOtp = await redis.get(`forgot-password:${email}`);
+
+    if (!storedOtp) {
+      return res.status(400).json({
+        message: "OTP expired",
+      });
+    }
+
+    if (storedOtp !== otp) {
+      return res.status(400).json({
+        message: "Invalid OTP",
+      });
+    }
+
+    await redis.set(redis_keys.otp_verified(email), "true", "EX", 600);
+
+    await redis.del(redis_keys.forgot_password(email));
+
+    return res.status(200).json(responses.ok_response("Otp verified"));
+  } catch (error) {
+    next(error);
+  }
+};
+
+const reset_password = async (req, res, next) => {
+  try {
+    const { email, newPassword } = req.body;
+
+    const isVerified = await redis.get(redis_keys.otp_verified(email));
+
+    if (!isVerified) {
+      return res.status(400).json({
+        message: "OTP verification required",
+      });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: {
+        email,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
+    const hashedPassword = await hash_password(newPassword);
+
+    await prisma.user.update({
+      where: {
+        email,
+      },
+      data: {
+        password: hashedPassword,
+      },
+    });
+
+    // remove verification after password update
+    await redis.del(redis_keys.otp_verified(email));
+
+    return res.status(200).json({
+      message: "Password reset successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 module.exports = {
   login,
   register_user,
   logout,
+  reset_password,
+  verify_otp,
+  forget_password,
 };
