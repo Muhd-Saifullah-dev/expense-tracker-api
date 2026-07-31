@@ -10,9 +10,8 @@ const {
   send_mail,
   otpTemplate,
   generate_access_token,
-  generate_refresh_token
+  generate_refresh_token,
 } = require("@shared/index");
-const crypto = require("crypto");
 
 const login = async (req, res, next) => {
   try {
@@ -68,7 +67,7 @@ const login = async (req, res, next) => {
 
 const register_user = async (req, res, next) => {
   try {
-    const { email, name, password, postalCode, region, city } = req.body;
+    const { email, name, password } = req.body;
 
     const existingUser = await prisma.user.findUnique({
       where: {
@@ -89,9 +88,6 @@ const register_user = async (req, res, next) => {
         email,
         name,
         password: hashedPassword,
-        postalCode,
-        region,
-        city,
       },
     });
 
