@@ -11,4 +11,6 @@ module.exports = {
   REDIS_PORT: process.env.REDIS_PORT,
   EMAIL: process.env.EMAIL,
   EMAIL_PASSWORD: process.env.EMAIL_PASSWORD,
+  REFRESH_TOKEN_SECRET:process.env.REFRESH_TOKEN_SECRET,
+  ACCESS_TOKEN_SECRET:process.env.ACCESS_TOKEN_SECRET
 };

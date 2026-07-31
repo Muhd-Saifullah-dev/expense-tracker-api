@@ -1,5 +1,7 @@
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
+const jwt=require("jsonwebtoken")
+const { ACCESS_TOKEN_SECRET,REFRESH_TOKEN_SECRET}=require("@config/env.config")
 const hash_password = async (password) => {
   const salt = 10;
 
@@ -21,7 +23,7 @@ const generate_access_token = async (user) => {
     {
       id: user.id,
     },
-    process.env.ACCESS_TOKEN_SECRET,
+    ACCESS_TOKEN_SECRET,
     {
       expiresIn: "15m",
     },
@@ -33,7 +35,7 @@ const generate_refresh_token = async (user) => {
     {
       id: user.id,
     },
-    process.env.REFRESH_TOKEN_SECRET,
+    REFRESH_TOKEN_SECRET,
     {
       expiresIn: "7d",
     },
