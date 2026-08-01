@@ -1,4 +1,6 @@
 require("module-alias/register");
+require("./workers/otp-worker")
+require("./workers/welcome-worker")
 const app = require("./app");
 const { connectDB, connectRedis } = require("@config/index");
 

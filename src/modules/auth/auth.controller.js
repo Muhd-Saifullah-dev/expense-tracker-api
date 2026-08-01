@@ -1,3 +1,6 @@
+const { REFRESH_TOKEN_SECRET } = require("@/config/env.config");
+const otpQueue = require("@/queues/otp-queue");
+const welcomeQueue = require("@/queues/welcome-queu");
 const {
   prisma,
   hash_password,
@@ -12,7 +15,7 @@ const {
   generate_access_token,
   generate_refresh_token,
 } = require("@shared/index");
-
+const jwt=require("jsonwebtoken")
 const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
@@ -101,6 +104,11 @@ const register_user = async (req, res, next) => {
       60 * 60 * 24 * 7,
     );
 
+    await welcomeQueue.add("welcome-email", {
+      email: user.email,
+      name: user.name,
+    });
+
     return res.status(201).json(
       responses.create_success_response({
         accessToken,
@@ -138,9 +146,7 @@ const forget_password = async (req, res, next) => {
     });
 
     if (!user) {
-      return res.status(404).json({
-        message: "User not found",
-      });
+      return res.status(404).json(responses.not_found_error("user not found"));
     }
 
     const otp = generate_otp(6);
@@ -151,13 +157,13 @@ const forget_password = async (req, res, next) => {
       "EX",
       300, // 5 minutes
     );
-    await send_mail({
-      toEmail: email,
-      subject: "Password Reset OTP",
-      html: otpTemplate(user.name, otp),
-    });
-    // email service se send karna
-    console.log("OTP:", otp);
+
+    await otpQueue.add("otp-email",{
+      email:user.email,
+      name:user.name,
+      otp:otp
+    })
+   
 
     return res
       .status(200)
@@ -174,15 +180,15 @@ const verify_otp = async (req, res, next) => {
     const storedOtp = await redis.get(`forgot-password:${email}`);
 
     if (!storedOtp) {
-      return res.status(400).json({
-        message: "OTP expired",
-      });
+      return res
+        .status(400)
+        .json(responses.bad_request_error("Otp expired", null));
     }
 
     if (storedOtp !== otp) {
-      return res.status(400).json({
-        message: "Invalid OTP",
-      });
+      return res
+        .status(400)
+        .json(responses.bad_request_error("Invalid Otp", null));
     }
 
     await redis.set(redis_keys.otp_verified(email), "true", "EX", 600);
@@ -202,9 +208,9 @@ const reset_password = async (req, res, next) => {
     const isVerified = await redis.get(redis_keys.otp_verified(email));
 
     if (!isVerified) {
-      return res.status(400).json({
-        message: "OTP verification required",
-      });
+      return res
+        .status(400)
+        .json(responses.bad_request_error("your time out try again", null));
     }
 
     const user = await prisma.user.findUnique({
@@ -214,9 +220,7 @@ const reset_password = async (req, res, next) => {
     });
 
     if (!user) {
-      return res.status(404).json({
-        message: "User not found",
-      });
+      return res.status(404).json(responses.not_found_error("user not found"));
     }
 
     const hashedPassword = await hash_password(newPassword);
@@ -233,13 +237,67 @@ const reset_password = async (req, res, next) => {
     // remove verification after password update
     await redis.del(redis_keys.otp_verified(email));
 
-    return res.status(200).json({
-      message: "Password reset successfully",
-    });
+    return res
+      .status(200)
+      .json(responses.ok_response(null, "password reset successfully"));
   } catch (error) {
     next(error);
   }
 };
+
+
+const refresh_token = async (req, res, next) => {
+  try {
+
+     const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      return res
+        .status(400)
+        .json(responses.bad_request_error("Refresh token is required"));
+    }
+
+    const payload = jwt.verify(
+      refreshToken,
+      REFRESH_TOKEN_SECRET
+    );
+
+    const storedToken = await redis.get(
+      redis_keys.refresh_token(payload.id)
+    );
+
+    if (!storedToken || storedToken !== refreshToken) {
+      return res
+        .status(401)
+        .json(responses.unauthorized_error("Invalid refresh token"));
+    }
+
+    const user = await prisma.user.findUnique({
+      where: {
+        id: payload.id,
+      },
+    });
+
+    if (!user) {
+      return res
+        .status(404)
+        .json(responses.not_found_error("User not found"));
+    }
+
+    const accessToken = await generate_access_token(user);
+
+    return res.status(200).json(
+      responses.ok_response(
+        {
+          accessToken,
+        },
+        "Access token generated successfully"
+      )
+    );
+  } catch (error) {
+    next(error)
+  }
+}
 module.exports = {
   login,
   register_user,
@@ -247,4 +305,5 @@ module.exports = {
   reset_password,
   verify_otp,
   forget_password,
+  refresh_token
 };
