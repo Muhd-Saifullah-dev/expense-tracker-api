@@ -13,6 +13,7 @@ const redis_keys = require("./redis-key");
 const { send_mail } = require("./mails/send-email-service");
 const otpTemplate = require("./mails/templates/otp.template");
 const bullmqRedis = require("./bullmq-redis");
+const welcomeTemplate = require("./mails/templates/welcome.template");
 const responses = new Responses();
 module.exports = {
   prisma,
@@ -27,5 +28,6 @@ module.exports = {
   redis_keys,
   send_mail,
   otpTemplate,
-  bullmqRedis
+  bullmqRedis,
+  welcomeTemplate
 };

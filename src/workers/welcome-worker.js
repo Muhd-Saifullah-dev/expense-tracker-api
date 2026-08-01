@@ -1,5 +1,6 @@
-const {Worker} =require("bullmq")
-const {send_mail}=require("@shared")
+const { Worker } = require("bullmq");
+
+const { welcomeTemplate, bullmqRedis, send_mail } = require("@/shared");
 new Worker(
   "welcome-email",
   async (job) => {
@@ -7,15 +8,13 @@ new Worker(
 
     await send_mail({
       toEmail: email,
-      subject: "Password Reset OTP",
-      html: otpTemplate(name, otp),
+      subject: "Welcome to Expense Tracker 🎉",
+      html: welcomeTemplate(name),
     });
 
-    console.log("OTP Email Sent");
+    console.log("Welcome email sent");
   },
   {
     connection: bullmqRedis,
   },
 );
-
-
