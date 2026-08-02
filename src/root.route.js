@@ -1,10 +1,11 @@
+const authenticated = require("./middleware/auth.middleware");
 const authRouter = require("./modules/auth/auth.route");
 const userRouter = require("./modules/users/user.route");
 
 const rootRouter = require("express").Router();
 
 rootRouter.use("/auth", authRouter);
-rootRouter.use("/user", userRouter);
+rootRouter.use("/user", authenticated, userRouter);
 // 404 route
 rootRouter.use((req, res) => {
   res.status(404).json({

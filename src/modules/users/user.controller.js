@@ -1,63 +1,61 @@
+const {
+  redis,
+  prisma,
+  responses,
+  redis_keys,
+  compare_password,
+  hash_password,
+} = require("@/shared");
 
+const get_profile = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
 
+    const cachedUser = await redis.get(redis_keys.user(userId));
 
-const getProfile = async(req,res)=>{
-
- const userId = req.user.id;
-
-
- const cachedUser = await redis.hgetall(
-   `user:${userId}`
- );
-
-
- if(Object.keys(cachedUser).length){
-    return res.json(cachedUser);
- }
-
-
- const user = await prisma.user.findUnique({
-    where:{
-       id:userId
-    },
-    select:{
-       id:true,
-       name:true,
-       email:true,
-       avatar:true,
-       city:true
+    if (cachedUser) {
+      const user = JSON.parse(cachedUser);
+      return res.json(
+        responses.ok_response({ user }, "user fetched successfully"),
+      );
     }
- });
 
+    // Database
+    const user = await prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+      },
+    });
 
- await redis.hset(
-   `user:${user.id}`,
-   user
- );
+    if (!user) {
+      return res.status(404).json(responses.not_found_error("user not found"));
+    }
+    const USER_CACHE_TTL = 60 * 60;
+    await redis.set(
+      redis_keys.user(user.id),
+      JSON.stringify(user),
+      "EX",
+      USER_CACHE_TTL,
+    );
 
-
- await redis.expire(
-   `user:${user.id}`,
-   3600
- );
-
-
- return res.json(user);
-
-}
+    return res.json(
+      responses.ok_response({ user }, "user fetched successfully"),
+    );
+  } catch (error) {
+    next(error);
+  }
+};
 
 const update_user_profile = async (req, res, next) => {
   try {
     const userId = req.user.id;
 
-    const {
-      name,
-      avatar,
-      city,
-      region,
-      postalCode
-    } = req.body;
-
+    const { name } = req.body;
 
     const updatedUser = await prisma.user.update({
       where: {
@@ -65,39 +63,78 @@ const update_user_profile = async (req, res, next) => {
       },
       data: {
         name,
-        avatar,
-        city,
-        region,
-        postalCode,
       },
       select: {
         id: true,
         name: true,
         email: true,
-        avatar: true,
-        city: true,
-        region: true,
-        postalCode: true,
       },
     });
 
+    // Invalidate cache
+    await redis.del(redis_keys.user(userId));
 
-    // invalidate redis cache
-    await redis.del(
-      `user:${userId}`
-    );
-
-
-    return res.status(200).json(
-      responses.ok_response(
-        updatedUser,
-        "Profile updated successfully"
-      )
-    );
-
-
+    return res
+      .status(200)
+      .json(
+        responses.ok_response(
+          { user: updatedUser },
+          "user profile update sucessfully",
+        ),
+      );
   } catch (error) {
     next(error);
   }
 };
 
+const update_user_password = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { password, newPassword } = req.body;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        password: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json(responses.not_found_error("user not found"));
+    }
+
+    const isMatch = await compare_password(password, user.password);
+
+    if (!isMatch) {
+      return res.status(400).json({
+        message: "Current password is incorrect",
+      });
+    }
+
+    const hashedPassword = await hash_password(newPassword);
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        password: hashedPassword,
+      },
+    });
+
+    await redis.del(redis_keys.refresh_token(userId));
+
+    return res
+      .status(200)
+      .json(
+        responses.update_success_response(null, "password changed sucesfully"),
+      );
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  update_user_password,
+  update_user_profile,
+  get_profile,
+};
