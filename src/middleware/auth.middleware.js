@@ -29,7 +29,9 @@ const authenticated = async (req, res, next) => {
         .status(401)
         .json(responses.unauthorized_error("User not found"));
     }
-    req.user = user.id;
+  req.user = {
+  id: user.id,
+};
     next();
   } catch (error) {
     return res

@@ -1,3 +1,4 @@
+const authenticated = require("@/middleware/auth.middleware");
 const {
   register_user,
   login,
@@ -12,7 +13,7 @@ const authRouter = require("express").Router();
 
 authRouter.post("/register", register_user);
 authRouter.post("/login", login);
-authRouter.get("/logout", logout);
+authRouter.post("/logout",authenticated, logout);
 authRouter.post("/forget-password", forget_password);
 authRouter.post("/verify-otp", verify_otp);
 authRouter.post("/reset-password", reset_password);
