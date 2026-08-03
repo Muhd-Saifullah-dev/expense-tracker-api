@@ -250,6 +250,9 @@ const refresh_token = async (req, res, next) => {
   try {
 
      const { refreshToken } = req.body;
+    
+
+
 
     if (!refreshToken) {
       return res
@@ -261,6 +264,9 @@ const refresh_token = async (req, res, next) => {
       refreshToken,
       REFRESH_TOKEN_SECRET
     );
+
+
+
 
     const storedToken = await redis.get(
       redis_keys.refresh_token(payload.id)
