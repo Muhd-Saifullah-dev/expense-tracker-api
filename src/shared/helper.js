@@ -52,11 +52,34 @@ const generate_otp = (length = 6) => {
   return otp;
 };
 
+
+
+const get_cursor_pagination = (query) => {
+  const limit = Number(query.limit) || 20;
+  const cursor = query.cursor;
+
+  return {
+    take: limit,
+    cursor: cursor
+      ? {
+          cursor: {
+            id: cursor,
+          },
+          skip: 1,
+        }
+      : {},
+  };
+};
+
+
+
 module.exports = {
   hash_password,
   compare_password,
   create_user_session,
   generate_access_token,
   generate_refresh_token,
-  generate_otp
+  generate_otp,
+    get_cursor_pagination,
+  
 };

@@ -14,58 +14,56 @@ datasource db {
 }
 
 model User {
-  id         Int     @id @default(autoincrement())
-  name       String
-  email      String  @unique
-  password   String?
- 
+  id           Int           @id @default(autoincrement())
+  name         String
+  email        String        @unique
+  password     String?
+  transactions Transaction[]
 
-
-  expenses      Expense[]
-  incomes       Income[]
   budgets       Budget[]
   notifications Notification[]
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 }
 
-model Expense {
-  id     String  @id @default(uuid())
+model Transaction {
+  id String @id @default(uuid())
+
   title  String  @db.VarChar(255)
   amount Decimal @db.Decimal(10, 2)
   note   String? @db.VarChar(100)
 
-  category   Category @relation(fields: [categoryId], references: [id])
-  categoryId Int
-  userId     Int
-  user       User     @relation(fields: [userId], references: [id])
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-}
+  type TransactionType
 
-model Category {
-  id    Int     @id @default(autoincrement())
-  name  String  @db.VarChar(50)
-  icon  String?
-  color String?
-
-  expenses  Expense[]
-  budgets   Budget[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-}
-
-model Income {
-  id Int @id @default(autoincrement())
-
-  title  String
-  amount Decimal @db.Decimal(10, 2)
+  date DateTime
 
   userId Int
   user   User @relation(fields: [userId], references: [id])
 
-  date DateTime
+  categoryId Int?
+  category   Category? @relation(fields: [categoryId], references: [id])
 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, date])
+  @@index([userId, type])
+  @@index([categoryId])
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+model Category {
+  id           Int           @id @default(autoincrement())
+  name         String        @db.VarChar(50)
+  icon         String?
+  color        String?
+  transactions Transaction[]
+
+  budgets   Budget[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
