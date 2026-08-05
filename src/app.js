@@ -16,7 +16,7 @@ app.get("/health-check", (req, res) => {
   return res.status(200).json({ success: true, message: "server running up" });
 });
 
-app.use(redis_rate_limit(5, 60));
+app.use(redis_rate_limit(20, 60));
 app.use("/api/v1", rootRouter);
 app.use(prismaErrorHandler);
 app.use(globalErrorMiddleware);

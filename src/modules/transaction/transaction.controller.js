@@ -91,9 +91,14 @@ const get_transactions = async (req, res, next) => {
       include: {
         category: true,
       },
-      orderBy: {
-        date: "desc",
-      },
+     orderBy: [
+    {
+      date: "desc",
+    },
+    {
+      id: "desc",
+    },
+  ],
       take: take + 1,
       ...cursor,
     });
@@ -123,7 +128,7 @@ const update_transaction = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const { title, amount, note, type, categoryId, date } = req.body;
+    const { title, amount, note, } = req.body;
 
     const userId = req.user.id;
 
@@ -136,9 +141,7 @@ const update_transaction = async (req, res, next) => {
         title: title.trim(),
         amount,
         note: note?.trim() || null,
-        type,
-        date: new Date(date),
-        categoryId: type === "EXPENSE" ? Number(categoryId) : null,
+       
       },
       include: {
         category: true,
@@ -184,9 +187,35 @@ const delete_transaction = async (req, res, next) => {
   }
 };
 
+const get_single_transaction = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const transaction = await prisma.transaction.findFirst({
+      where: {
+        id,
+        userId,
+      },
+      include: {
+        category: true,
+        
+      },
+    });
+
+    if (!transaction) {
+      return res.status(404).json(responses.not_found_error("transaction not found"));
+    }
+
+    return res.status(200).json(responses.ok_response(transaction,"transaction get successfully"));
+  } catch (error) {
+    next(error);
+  }
+};
 module.exports = {
   create_transaction,
   get_transactions,
   delete_transaction,
   update_transaction,
+  get_single_transaction
 };
