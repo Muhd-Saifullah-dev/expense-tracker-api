@@ -1,7 +1,10 @@
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
-const jwt=require("jsonwebtoken")
-const { ACCESS_TOKEN_SECRET,REFRESH_TOKEN_SECRET}=require("@config/env.config")
+const jwt = require("jsonwebtoken");
+const {
+  ACCESS_TOKEN_SECRET,
+  REFRESH_TOKEN_SECRET,
+} = require("@config/env.config");
 const hash_password = async (password) => {
   const salt = 10;
 
@@ -52,8 +55,6 @@ const generate_otp = (length = 6) => {
   return otp;
 };
 
-
-
 const get_cursor_pagination = (query) => {
   const limit = Number(query.limit) || 20;
   const cursor = query.cursor;
@@ -71,8 +72,6 @@ const get_cursor_pagination = (query) => {
   };
 };
 
-
-
 module.exports = {
   hash_password,
   compare_password,
@@ -80,6 +79,5 @@ module.exports = {
   generate_access_token,
   generate_refresh_token,
   generate_otp,
-    get_cursor_pagination,
-  
+  get_cursor_pagination,
 };

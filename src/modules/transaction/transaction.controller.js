@@ -1,4 +1,4 @@
-const { prisma, responses } = require("@/shared");
+const { prisma, responses, get_cursor_pagination } = require("@/shared");
 
 const create_transaction = async (req, res, next) => {
   try {
@@ -38,7 +38,13 @@ const get_transactions = async (req, res, next) => {
   try {
     const userId = req.user.id;
 
-    const { month, year, type, categoryId, search } = req.query;
+    const {
+      startDate,
+      endDate,
+      type,
+      categoryId,
+      search,
+    } = req.query;
 
     const { take, cursor } = get_cursor_pagination(req.query);
 
@@ -46,27 +52,37 @@ const get_transactions = async (req, res, next) => {
       userId,
     };
 
-    if (month && year) {
-      const startDate = new Date(Number(year), Number(month) - 1, 1);
-      const endDate = new Date(Number(year), Number(month), 1);
+    // Date Range
+    if (startDate || endDate) {
+      where.date = {};
 
-      where.date = {
-        gte: startDate,
-        lt: endDate,
-      };
+      if (startDate) {
+        where.date.gte = new Date(startDate);
+      }
+
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999); // pura din include hoga
+
+        where.date.lte = end;
+      }
     }
 
+    // Type
     if (type && type !== "ALL") {
       where.type = type;
     }
 
+    // Category
     if (categoryId) {
       where.categoryId = Number(categoryId);
     }
 
+    // Search
     if (search) {
       where.title = {
         contains: search,
+        mode: "insensitive",
       };
     }
 
@@ -75,9 +91,14 @@ const get_transactions = async (req, res, next) => {
       include: {
         category: true,
       },
-      orderBy: {
-        date: "desc",
-      },
+     orderBy: [
+    {
+      date: "desc",
+    },
+    {
+      id: "desc",
+    },
+  ],
       take: take + 1,
       ...cursor,
     });
@@ -89,14 +110,14 @@ const get_transactions = async (req, res, next) => {
     }
 
     return res.status(200).json(
-      responses.get_success_response(
+      responses.ok_response(
         {
           transactions,
           nextCursor,
           hasMore: !!nextCursor,
         },
-        "Transactions fetched successfully.",
-      ),
+        "Transactions fetched successfully."
+      )
     );
   } catch (error) {
     next(error);
@@ -107,7 +128,7 @@ const update_transaction = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const { title, amount, note, type, categoryId, date } = req.body;
+    const { title, amount, note, } = req.body;
 
     const userId = req.user.id;
 
@@ -120,9 +141,7 @@ const update_transaction = async (req, res, next) => {
         title: title.trim(),
         amount,
         note: note?.trim() || null,
-        type,
-        date: new Date(date),
-        categoryId: type === "EXPENSE" ? Number(categoryId) : null,
+       
       },
       include: {
         category: true,
@@ -168,9 +187,35 @@ const delete_transaction = async (req, res, next) => {
   }
 };
 
+const get_single_transaction = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const transaction = await prisma.transaction.findFirst({
+      where: {
+        id,
+        userId,
+      },
+      include: {
+        category: true,
+        
+      },
+    });
+
+    if (!transaction) {
+      return res.status(404).json(responses.not_found_error("transaction not found"));
+    }
+
+    return res.status(200).json(responses.ok_response(transaction,"transaction get successfully"));
+  } catch (error) {
+    next(error);
+  }
+};
 module.exports = {
   create_transaction,
   get_transactions,
   delete_transaction,
   update_transaction,
+  get_single_transaction
 };
