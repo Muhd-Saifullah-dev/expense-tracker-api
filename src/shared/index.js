@@ -16,6 +16,7 @@ const { send_mail } = require("./mails/send-email-service");
 const otpTemplate = require("./mails/templates/otp.template");
 const bullmqRedis = require("./bullmq-redis");
 const welcomeTemplate = require("./mails/templates/welcome.template");
+const budgetExceededTemplate = require("./mails/templates/exceededBudget");
 const responses = new Responses();
 module.exports = {
   prisma,
@@ -33,5 +34,5 @@ module.exports = {
   bullmqRedis,
   welcomeTemplate,
   get_cursor_pagination,
-
+  budgetExceededTemplate
 };
