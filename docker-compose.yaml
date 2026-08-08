@@ -1,4 +1,15 @@
 services:
+  backend:
+    build: .
+    container_name: expense-backend
+    ports:
+      - "9001:9001"
+    env_file:
+      - .env
+    depends_on:
+      - mysql
+      - redis
+    restart: unless-stopped
   mysql:
     image: mysql:8.0
     container_name: expense-tracker-mysql
